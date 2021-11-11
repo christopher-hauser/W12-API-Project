@@ -14,7 +14,11 @@ const tweetNotFoundError = (tweetId) => {
 }
 
 router.get("/", asyncHandler(async (req, res) => {
-    const tweets = await Tweet.findAll();
+    const tweets = await Tweet.findAll({
+        include: [{ model: User, as: "user", attributes: ["username"] }],
+        order: [["createdAt", "DESC"]],
+        attributes: ["message"],
+      });
     console.log(tweets)
     res.json({
         tweets
@@ -38,11 +42,7 @@ router.post('/', userValidators, handleValidationErrors, asyncHandler(async (req
         message,
     } = req.body;
 
-    const tweet = Tweet.build({
-        message
-    });
-
-    await tweet.save();
+    const tweet = await Tweet.create({ message, userId: req.user.id });
     res.redirect('/');
 }))
 

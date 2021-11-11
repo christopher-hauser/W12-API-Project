@@ -1,7 +1,40 @@
 const jwt = require("jsonwebtoken");
 const { jwtConfig } = require("./config");
+const bearerToken = require("express-bearer-token");
+const db = require("./db/models");
+const { User } = db;
 
 const { secret, expiresIn } = jwtConfig;
+
+const restoreUser = (req, res, next) => {
+  const { token } = req;
+  console.log(req)
+
+  if (!token) {
+    return res.set("WWW-Authenticate", "Bearer").status(401).end();
+  }
+
+  return jwt.verify(token, secret, null, async (err, jwtPayload) => {
+    // TODO: Define asynchronous function for jwtPayload logic
+    if (err) {
+      err.status = 401;
+      return next(err);
+    }
+    const { id } = jwtPayload.data;
+
+    try {
+      req.user = await User.findByPk(id);
+    } catch (e) {
+      return next(e);
+    }
+
+    if (!req.user) {
+      return res.set("WWW-Authenticate", "Bearer").status(401).end();
+    }
+    return next();
+  });
+};
+
 
 const getUserToken = (user) => {
   // Don't store the user's hashed password
@@ -21,4 +54,5 @@ const getUserToken = (user) => {
   return token;
 };
 
-module.exports = { getUserToken };
+const requireAuth = [bearerToken(), restoreUser];
+module.exports = { getUserToken, requireAuth };
